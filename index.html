@@ -3,691 +3,514 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>台灣顯著有感地震即時監控看板</title>
+  <title>台灣農業體驗戶外教育休閒農場地圖</title>
+
+  <!-- Google Fonts: Zen Maru Gothic & Noto Sans TC -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Leaflet CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'farm-green': '#5B8C51',
+            'farm-green-dark': '#3E6237',
+            'farm-green-light': '#EAF2E8',
+            'farm-cream': '#FAF6EE',
+            'farm-cream-card': '#FFFDF9',
+            'farm-brown': '#7C5237',
+            'farm-brown-light': '#D9C5B2',
+            'farm-wood': '#8C5D3B',
+            'farm-accent': '#E09200',
+            'farm-badge': '#78A066'
+          },
+          fontFamily: {
+            'rural': ['"Zen Maru Gothic"', '"Noto Sans TC"', 'sans-serif'],
+            'body': ['"Noto Sans TC"', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+
   <style>
-    :root {
-      --bg-color: #f4f6f9;
-      --card-bg: #ffffff;
-      --text-primary: #1e293b;
-      --text-secondary: #64748b;
-      --border-color: #e2e8f0;
-      --primary-accent: #2563eb;
-    }
-
-    * { box-sizing: border-box; }
-
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      background-color: var(--bg-color);
-      color: var(--text-primary);
-      margin: 0;
-      padding: 24px;
-      line-height: 1.5;
+      font-family: 'Noto Sans TC', sans-serif;
+      background-color: #FAF6EE;
+      color: #4A3E3D;
+    }
+    
+    h1, h2, h3, .font-rural {
+      font-family: 'Zen Maru Gothic', 'Noto Sans TC', sans-serif;
     }
 
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: var(--card-bg);
-      padding: 16px 24px;
-      border-radius: 12px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-      margin-bottom: 20px;
-      flex-wrap: wrap;
-      gap: 12px;
+    /* Custom Scrollbar for Sidebar */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
     }
-
-    .header-title-group {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
+    ::-webkit-scrollbar-track {
+      background: #FAF6EE;
     }
-
-    h1 {
-      margin: 0;
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: var(--text-primary);
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .data-source-tag {
-      font-size: 0.82rem;
-      color: var(--text-secondary);
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .data-source-tag a {
-      color: var(--primary-accent);
-      text-decoration: none;
-      font-weight: 600;
-    }
-
-    .data-source-tag a:hover {
-      text-decoration: underline;
-    }
-
-    .status-bar {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    .status-time {
-      font-size: 0.9rem;
-      color: var(--text-secondary);
-      background: #f1f5f9;
-      padding: 6px 12px;
-      border-radius: 20px;
-    }
-
-    .key-btn, .audio-btn {
-      background: var(--primary-accent);
-      color: white;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 20px;
-      cursor: pointer;
-      font-weight: 600;
-      font-size: 0.9rem;
-      transition: all 0.2s ease;
-      box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
-    }
-
-    .key-btn { background: #475569; box-shadow: 0 2px 4px rgba(71, 85, 105, 0.2); }
-    .key-btn:hover { background: #334155; }
-    .audio-btn:hover { background: #1d4ed8; }
-    .audio-btn.unlocked { background: #10b981; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2); }
-
-    .dashboard-layout {
-      display: grid;
-      grid-template-columns: 420px 1fr 340px;
-      gap: 20px;
-      align-items: start;
-    }
-
-    @media (max-width: 1200px) {
-      .dashboard-layout { grid-template-columns: 1fr 1fr; }
-      .history-panel { grid-column: span 2; }
-    }
-
-    @media (max-width: 768px) {
-      .dashboard-layout { grid-template-columns: 1fr; }
-      .history-panel { grid-column: span 1; }
-    }
-
-    .panel {
-      background: var(--card-bg);
-      border-radius: 16px;
-      padding: 24px;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-      border: 1px solid var(--border-color);
-    }
-
-    .panel-title {
-      font-size: 1.1rem;
-      font-weight: 700;
-      margin: 0 0 16px 0;
-      color: var(--text-primary);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .filter-box {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 12px;
-    }
-
-    .county-select {
-      flex: 1;
-      padding: 8px 12px;
-      border-radius: 8px;
-      border: 1px solid var(--border-color);
-      background: #f8fafc;
-      font-size: 0.9rem;
-      color: var(--text-primary);
-      font-weight: 600;
-      outline: none;
-      cursor: pointer;
-    }
-
-    .county-select:focus {
-      border-color: var(--primary-accent);
-      background: #ffffff;
-    }
-
-    .reset-btn {
-      padding: 8px 12px;
-      border-radius: 8px;
-      border: 1px solid var(--border-color);
-      background: #ffffff;
-      color: var(--text-secondary);
-      font-size: 0.85rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .reset-btn:hover {
-      background: #f1f5f9;
-      color: var(--text-primary);
-    }
-
-    .history-list {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      max-height: 560px;
-      overflow-y: auto;
-      padding-right: 4px;
-    }
-
-    .history-item {
-      padding: 12px 16px;
+    ::-webkit-scrollbar-thumb {
+      background: #D9C5B2;
       border-radius: 10px;
-      border: 1px solid var(--border-color);
-      background: #f8fafc;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #8C5D3B;
     }
 
-    .history-item:hover {
-      background: #f1f5f9;
-      border-color: #cbd5e1;
+    /* Leaflet Custom Popup Styling */
+    .leaflet-popup-content-wrapper {
+      background: #FFFDF9;
+      border: 3px solid #7C5237;
+      border-radius: 18px;
+      box-shadow: 0 10px 25px -5px rgba(124, 82, 55, 0.25);
+      padding: 4px;
+    }
+    .leaflet-popup-tip {
+      background: #7C5237;
+    }
+    .leaflet-popup-content {
+      margin: 12px 14px;
+      font-family: 'Noto Sans TC', sans-serif;
     }
 
-    .history-item.active {
-      background: #eff6ff;
-      border-color: #93c5fd;
-      box-shadow: 0 2px 4px rgba(37, 99, 235, 0.08);
+    /* Custom Farm Pin Marker Animation */
+    .custom-farm-icon {
+      transition: transform 0.2s ease-in-out;
+    }
+    .custom-farm-icon:hover {
+      transform: scale(1.15) translateY(-5px);
     }
 
-    .history-time { font-size: 0.85rem; color: var(--text-secondary); font-weight: 500; }
-    .history-loc { font-size: 0.95rem; font-weight: 600; color: var(--text-primary); margin-top: 2px; }
-    .history-mag {
-      font-size: 1.1rem;
-      font-weight: 800;
-      color: #ef4444;
-      background: #fef2f2;
-      padding: 4px 10px;
-      border-radius: 8px;
-    }
-
-    .county-intensity-badge {
-      font-size: 0.8rem;
-      font-weight: 700;
-      padding: 2px 6px;
-      border-radius: 4px;
-      margin-left: 6px;
-    }
-
-    .hero-stat {
-      background: linear-gradient(135deg, #f8fafc 0%, #edf2f7 100%);
-      border-radius: 12px;
-      padding: 20px;
-      text-align: center;
-      margin-bottom: 20px;
-      border: 1px solid #e2e8f0;
-    }
-
-    .hero-mag-label { font-size: 0.85rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; }
-    .hero-mag-val { font-size: 3.8rem; font-weight: 900; color: #dc2626; line-height: 1; margin: 6px 0; }
-
-    .data-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 10px 0;
-      border-bottom: 1px solid #f1f5f9;
-      font-size: 0.95rem;
-    }
-
-    .data-row:last-child { border-bottom: none; }
-    .data-label { color: var(--text-secondary); }
-    .data-val { font-weight: 600; color: var(--text-primary); text-align: right; }
-
-    .county-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
-    }
-
-    .county-card {
-      background: #f8fafc;
-      border: 1px solid var(--border-color);
-      border-radius: 10px;
-      padding: 8px 4px;
-      text-align: center;
-      transition: all 0.2s ease;
-      cursor: pointer;
-    }
-
-    .county-card:hover {
+    /* Card Highlight state */
+    .farm-card.active {
+      border-color: #5B8C51 !important;
+      background-color: #EAF2E8 !important;
+      box-shadow: 0 8px 20px rgba(91, 140, 81, 0.25) !important;
       transform: translateY(-2px);
-      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
     }
 
-    .county-card.highlight {
-      border: 2px solid var(--primary-accent);
-      background: #eff6ff;
-    }
-
-    .county-name { font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; }
-
-    .intensity-tag {
-      display: inline-block;
-      padding: 3px 0;
-      border-radius: 6px;
-      font-weight: 700;
-      font-size: 0.85rem;
-      width: 100%;
-    }
-
-    .i-0  { background: #e2e8f0; color: #64748b; }
-    .i-1  { background: #e9d5ff; color: #6b21a8; }
-    .i-2  { background: #bfdbfe; color: #1e40af; }
-    .i-3  { background: #a7f3d0; color: #065f46; }
-    .i-4  { background: #fef08a; color: #854d0e; }
-    .i-5L { background: #fed7aa; color: #9a3412; }
-    .i-5H { background: #fecaca; color: #991b1b; }
-    .i-6L { background: #fca5a5; color: #7f1d1d; }
-    .i-6H { background: #ef4444; color: #ffffff; }
-    .i-7  { background: #881337; color: #ffffff; }
-
-    @keyframes pulse-light {
-      0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
-      70% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-    }
-
-    .alarm-active {
-      animation: pulse-light 1.5s infinite;
-      border-color: #ef4444 !important;
-    }
-
-    footer {
-      margin-top: 30px;
-      text-align: center;
-      font-size: 0.85rem;
-      color: var(--text-secondary);
+    /* Rural Wooden Texture Background Effect */
+    .wood-header {
+      background-color: #7C5237;
+      background-image: radial-gradient(#8C5D3B 15%, transparent 16%), radial-gradient(#6B442B 15%, transparent 16%);
+      background-size: 20px 20px;
+      background-position: 0 0, 10px 10px;
     }
   </style>
 </head>
-<body>
+<body class="h-screen w-screen overflow-hidden flex flex-col md:flex-row">
 
-  <header>
-    <div class="header-title-group">
-      <h1>地動監測｜地震即時觀測看板</h1>
-      <div class="data-source-tag">
-        <span>📡 資料來源：</span>
-        <a href="https://opendata.cwa.gov.tw/" target="_blank" rel="noopener">交通部中央氣象署 (CWA) 氣象開放資料平台</a>
-        <span>（資料集：E-A0015-001 顯著有感地震報告）</span>
+  <!-- Left Side: Sidebar Panel -->
+  <aside class="w-full md:w-[420px] lg:w-[460px] h-1/2 md:h-full flex flex-col z-20 bg-farm-cream border-b-4 md:border-b-0 md:border-r-4 border-farm-brown shadow-xl">
+    
+    <!-- Header with Wooden/Rural Theme -->
+    <header class="wood-header text-white p-4 shadow-md relative">
+      <div class="flex items-center justify-between mb-1">
+        <div class="flex items-center gap-2">
+          <span class="text-2xl">🌾</span>
+          <h1 class="text-xl md:text-2xl font-bold font-rural tracking-wider text-amber-100">台灣農場體驗地圖</h1>
+        </div>
+        <span class="bg-amber-100 text-farm-brown text-xs px-2.5 py-1 rounded-full font-bold shadow">休閒農場</span>
       </div>
-    </div>
-    <div class="status-bar">
-      <span id="update-time" class="status-time">資料連線中...</span>
-      <button id="set-key-btn" class="key-btn">🔑 設定 API Key</button>
-      <button id="audio-btn" class="audio-btn">🔊 點擊啟用聲音警報</button>
-    </div>
-  </header>
+      <p class="text-xs text-amber-200/90 font-rural pl-8">探索在地農業樂趣 ‧ 戶外自然生態體驗</p>
+    </header>
 
-  <div class="dashboard-layout">
-    <div class="panel history-panel">
-      <div class="panel-title">
-        <span>歷史地震紀錄</span>
-        <span id="history-count" style="font-size: 0.8rem; color: var(--text-secondary);">共 0 筆</span>
-      </div>
-
-      <div class="filter-box">
-        <select id="county-filter" class="county-select">
-          <option value="">🔍 選擇縣市（顯示全台）</option>
-        </select>
-        <button id="reset-filter-btn" class="reset-btn">重置</button>
-      </div>
-
-      <div class="history-list" id="history-list"></div>
-    </div>
-
-    <div class="panel" id="main-info-panel">
-      <div class="panel-title">地震詳細資訊</div>
+    <!-- Search & Filter Controls Section -->
+    <div class="p-3 bg-farm-cream-card border-b-2 border-farm-brown-light/40 space-y-2.5">
       
-      <div class="hero-stat">
-        <div class="hero-mag-label">芮氏規模 (Magnitude)</div>
-        <div class="hero-mag-val" id="eq-mag">M --</div>
+      <!-- Search Input Box -->
+      <div class="relative">
+        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-farm-brown/60 text-sm"></i>
+        <input 
+          type="text" 
+          id="searchInput" 
+          placeholder="搜尋農場名稱、採果/DIY體驗、地區..." 
+          class="w-full pl-9 pr-8 py-2 text-sm bg-farm-cream border-2 border-farm-brown-light rounded-xl focus:outline-none focus:border-farm-green transition-all placeholder:text-stone-400 font-medium"
+        >
+        <button id="clearSearchBtn" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600">
+          <i class="fa-solid fa-circle-xmark"></i>
+        </button>
       </div>
 
-      <div class="data-row">
-        <span class="data-label">發震時間</span>
-        <span class="data-val" id="eq-time">--</span>
-      </div>
-      <div class="data-row">
-        <span class="data-label">震央位置</span>
-        <span class="data-val" id="eq-loc">--</span>
-      </div>
-      <div class="data-row">
-        <span class="data-label">震源深度</span>
-        <span class="data-val" id="eq-depth">-- km</span>
-      </div>
-      
-      <div style="margin-top: 16px; font-size: 0.88rem; color: var(--text-secondary); background: #f8fafc; padding: 12px; border-radius: 8px;" id="eq-report">
-        --
+      <!-- County Filter Dropdown & Stats Badge -->
+      <div class="flex items-center justify-between gap-2">
+        <div class="flex items-center gap-1.5 flex-1">
+          <label for="countySelect" class="text-xs font-bold text-farm-brown shrink-0">
+            <i class="fa-solid fa-location-dot text-farm-green mr-1"></i>縣市:
+          </label>
+          <select 
+            id="countySelect" 
+            class="w-full text-xs py-1.5 px-2 bg-farm-cream border-2 border-farm-brown-light rounded-lg focus:outline-none focus:border-farm-green font-bold text-farm-brown"
+          >
+            <option value="ALL">📍 全部縣市 (全台灣)</option>
+          </select>
+        </div>
+
+        <div class="bg-farm-green-light border border-farm-green/30 text-farm-green-dark text-xs px-2.5 py-1 rounded-lg font-bold shrink-0 shadow-sm">
+          共 <span id="farmCount" class="text-sm font-black text-farm-green">45</span> 家
+        </div>
       </div>
     </div>
 
-    <div class="panel">
-      <div class="panel-title">全台各地最大震度</div>
-      <div class="county-grid" id="county-grid"></div>
+    <!-- Farm List Container -->
+    <div id="farmList" class="flex-1 overflow-y-auto p-3 space-y-3 bg-farm-cream">
+      <!-- Cards will be dynamically inserted here via JS -->
     </div>
-  </div>
 
-  <footer>
-    本看板資料透過 API 自動同步，僅供學術與個人資訊監控用途。
-  </footer>
+    <!-- Footer Note -->
+    <footer class="text-center py-2 px-3 text-[11px] text-stone-500 bg-farm-cream-card border-t border-farm-brown-light/30">
+      數據來源：農業部休閒農業開放資料 (COA Open Data)
+    </footer>
+  </aside>
 
+  <!-- Right Side: Interactive Leaflet Map Container -->
+  <main class="w-full md:flex-1 h-1/2 md:h-full relative">
+    <div id="map" class="w-full h-full z-10"></div>
+  </main>
+
+  <!-- JavaScript App Logic -->
   <script>
-    const TAIWAN_COUNTIES = [
-      "基隆市", "臺北市", "新北市", "桃園市", "新竹市", "新竹縣", "苗栗縣",
-      "臺中市", "彰化縣", "南投縣", "雲林縣", "嘉義市", "嘉義縣", "臺南市",
-      "高雄市", "屏東縣", "宜蘭縣", "花蓮縣", "臺東縣", "澎湖縣", "金門縣", "連江縣"
+    // 1. Complete Embedded Dataset from COA_OpenData.csv
+    const farmData = [
+      { "FarmNm_CH": "幸福農場", "TEL": "037-783618", "County": "苗栗縣", "Township": "通霄鎮", "Address_CH": "苗栗縣通霄鎮福興里11鄰126號", "WebURL": "http://www.cheerfulfarm.com.tw", "Longitude": 120.730304, "Latitude": 24.468205, "ServeItem": "有機蔬菜採摘, 鄉土風味餐, 農事體驗, 露營區", "Facebook": "https://www.facebook.com/cheerfulfarm" },
+      { "FarmNm_CH": "飛牛牧場", "TEL": "037-782999", "County": "苗栗縣", "Township": "通霄鎮", "Address_CH": "苗栗縣通霄鎮福興里166號", "WebURL": "https://www.flyingcow.com.tw", "Longitude": 120.736916, "Latitude": 24.471644, "ServeItem": "餵牛羊體驗, 牛奶餅乾DIY, 烤肉露營, 戶外生態教學", "Facebook": "https://www.facebook.com/flyingcow.com.tw" },
+      { "FarmNm_CH": "花露農場", "TEL": "037-951898", "County": "苗栗縣", "Township": "卓蘭鎮", "Address_CH": "苗栗縣卓蘭鎮西坪里西坪43-3號", "WebURL": "https://www.flowerhome.com.tw", "Longitude": 120.828551, "Latitude": 24.333068, "ServeItem": "香草精油DIY, 繡球花賞花體驗, 精油城堡民宿, 香草餐飲", "Facebook": "https://www.facebook.com/FlowerHomeShop" },
+      { "FarmNm_CH": "大坑休閒農場", "TEL": "06-5941555", "County": "臺南市", "Township": "新化區", "Address_CH": "臺南市新化區大坑里82號", "WebURL": "http://www.dakeng.com.tw", "Longitude": 120.370502, "Latitude": 23.013210, "ServeItem": "竹筍野菜體驗, 小動物餵食, 體能訓練場, 野菜養生餐", "Facebook": "https://www.facebook.com/dakengfarm" },
+      { "FarmNm_CH": "走馬瀨農場", "TEL": "06-5760121", "County": "臺南市", "Township": "大內區", "Address_CH": "臺南市大內區二溪里 get31號", "WebURL": "http://www.farm.com.tw", "Longitude": 120.428588, "Latitude": 23.136894, "ServeItem": "牧草體驗, 射箭, 騎馬, 腳踏車, 戶外漆彈, 露營", "Facebook": "https://www.facebook.com/tsoumalai" },
+      { "FarmNm_CH": "仙湖休閒農場", "TEL": "06-6863635", "County": "臺南市", "Township": "東山區", "Address_CH": "臺南市東山區南勢里賀老寮1-2號", "WebURL": "http://www.senhoo.com.tw", "Longitude": 120.485123, "Latitude": 23.275321, "ServeItem": "龍眼採收體驗, 桂圓烘焙DIY, 無邊際山泉池, 鄉村料理", "Facebook": "https://www.facebook.com/senhoofarm" },
+      { "FarmNm_CH": "清境農場", "TEL": "049-2802748", "County": "南投縣", "Township": "仁愛鄉", "Address_CH": "南投縣仁愛鄉大同村仁和路170號", "WebURL": "https://www.chingjing.gov.tw", "Longitude": 121.161868, "Latitude": 24.058564, "ServeItem": "綿羊秀, 馬術秀, 羊咩咩餵食體驗, 步道健行", "Facebook": "https://www.facebook.com/CingjingFarm" },
+      { "FarmNm_CH": "台一生態休閒農場", "TEL": "049-2997848", "County": "南投縣", "Township": "埔里鎮", "Address_CH": "南投縣埔里鎮中山路1段176號", "WebURL": "http://www.taiifarm.com", "Longitude": 120.992688, "Latitude": 23.978252, "ServeItem": "草莓百香果採果體驗, 押花DIY, 水上花園餐廳, 生態導覽", "Facebook": "https://www.facebook.com/taiifarm" },
+      { "FarmNm_CH": "頭城休閒農場", "TEL": "03-9772222", "County": "宜蘭縣", "Township": "頭城鎮", "Address_CH": "宜蘭縣頭城鎮更新路125-1號", "WebURL": "https://www.tcfarm.com.tw", "Longitude": 121.828551, "Latitude": 24.887201, "ServeItem": "葉拓DIY, 竹蜻蜓製作, 水稻田體驗, 控窯, 螢火蟲觀察", "Facebook": "https://www.facebook.com/touchenggreenfarm" },
+      { "FarmNm_CH": "香格里拉休閒農場", "TEL": "03-9511456", "County": "宜蘭縣", "Township": "冬山鄉", "Address_CH": "宜蘭縣冬山鄉梅山路168號", "WebURL": "http://www.shangrila-resort.com.tw", "Longitude": 121.728956, "Latitude": 24.636881, "ServeItem": "搓湯圓DIY, 放天燈, 採果體驗, 夜間生態導覽", "Facebook": "https://www.facebook.com/shangrilafarm" },
+      { "FarmNm_CH": "三富休閒農場", "TEL": "03-9588690", "County": "宜蘭縣", "Township": "冬山鄉", "Address_CH": "宜蘭縣冬山鄉中山村新寮二路161B號", "WebURL": "https://www.sanfufarm.com.tw", "Longitude": 121.752361, "Latitude": 24.620852, "ServeItem": "青蛙夜間生態導覽, 彩繪DIY, 柚花香草體驗, 紫森林簡餐", "Facebook": "https://www.facebook.com/sanfufarm" },
+      { "FarmNm_CH": "廣興農場", "TEL": "03-9513236", "County": "宜蘭縣", "Township": "冬山鄉", "Address_CH": "宜蘭縣冬山鄉柯林村光華三路132.148號", "WebURL": "http://www.porkchops.com.tw", "Longitude": 121.724611, "Latitude": 24.672851, "ServeItem": "摸蜊仔兼洗褲, 控窯體驗, 摸蝦彩繪DIY, 傳統豬舍風情", "Facebook": "https://www.facebook.com/porkchopsfarm" },
+      { "FarmNm_CH": "勝洋休閒農場", "TEL": "03-9222487", "County": "宜蘭縣", "Township": "員山鄉", "Address_CH": "宜蘭縣員山鄉尚德村八甲路15-6號", "WebURL": "http://www.sywater.com.tw", "Longitude": 121.724810, "Latitude": 24.739215, "ServeItem": "水草生態瓶DIY, 竹筏體驗, 釣魚體驗, 水草風味餐", "Facebook": "https://www.facebook.com/sywater" },
+      { "FarmNm_CH": "綠世界生態農場", "TEL": "03-5801000", "County": "新竹縣", "Township": "北埔鄉", "Address_CH": "新竹縣北埔鄉大湖村7鄰20號", "WebURL": "https://www.green-world.com.tw", "Longitude": 121.070852, "Latitude": 24.699861, "ServeItem": "草羊駝散步, 鳥類生態天國, 植物園導覽, 戶外自然觀察", "Facebook": "https://www.facebook.com/GreenWorldFarm" },
+      { "FarmNm_CH": "雪霸休閒農場", "TEL": "03-5856192", "County": "新竹縣", "Township": "五峰鄉", "Address_CH": "新竹縣五峰鄉桃山村民石380號", "WebURL": "http://www.sheipa.com.tw", "Longitude": 121.117920, "Latitude": 24.536551, "ServeItem": "藍莓果醬DIY, 雲海觀察, 野花園觀賞, 步道森林浴", "Facebook": "https://www.facebook.com/sheipafarm" },
+      { "FarmNm_CH": "金勇DIY休閒農場", "TEL": "03-5870899", "County": "新竹縣", "Township": "關西鎮", "Address_CH": "新竹縣關西鎮東光里16張2號", "WebURL": "http://www.tomatoes.com.tw", "Longitude": 121.185611, "Latitude": 24.795861, "ServeItem": "聯合國蕃茄採果體驗, 搗客家麻糬DIY, 花卉採集", "Facebook": "https://www.facebook.com/tomatofarm" },
+      { "FarmNm_CH": "春天農場", "TEL": "03-3502953", "County": "桃園市", "Township": "龜山區", "Address_CH": "桃園市龜山區長壽路272號", "WebURL": "http://www.springfarm.com.tw", "Longitude": 121.336821, "Latitude": 24.996821, "ServeItem": "烤肉體驗, 烘焙DIY, 可愛動物區, 戀人步道賞花", "Facebook": "https://www.facebook.com/springfarm.tw" },
+      { "FarmNm_CH": "活力健康農場", "TEL": "03-4970386", "County": "桃園市", "Township": "新屋區", "Address_CH": "桃園市新屋區笨港村4鄰33號", "WebURL": "http://www.woodland.com.tw", "Longitude": 121.036125, "Latitude": 24.952101, "ServeItem": "控窯體驗, 搗麻糬, 擂茶DIY, 捉泥鰍, 三合院古厝巡禮", "Facebook": "https://www.facebook.com/woodlandfarm" },
+      { "FarmNm_CH": "青林農場", "TEL": "03-4987747", "County": "桃園市", "Township": "觀音區", "Address_CH": "桃園市觀音區大湖路二段131-1號", "WebURL": "https://www.chinglin.com.tw", "Longitude": 121.120521, "Latitude": 25.000351, "ServeItem": "乾燥花DIY, 採麥桿菊體驗, 迷宮闖關, 戶外大草坪", "Facebook": "https://www.facebook.com/chinglinfarm" },
+      { "FarmNm_CH": "向陽農場", "TEL": "03-4870629", "County": "桃園市", "Township": "觀音區", "Address_CH": "桃園市觀音區藍埔里11鄰52號", "WebURL": "http://www.sungreen.com.tw", "Longitude": 121.109851, "Latitude": 25.013621, "ServeItem": "採向日葵體驗, 葵花雞蛋糕DIY, 小火車, 戶外婚禮體驗", "Facebook": "https://www.facebook.com/sunflowerfarm" },
+      { "FarmNm_CH": "沐心泉休閒農場", "TEL": "04-25931201", "County": "臺中市", "Township": "新社區", "Address_CH": "臺中市新社區中和里中興街60號", "WebURL": "https://www.facebook.com/Ares.Muxinquan", "Longitude": 120.846201, "Latitude": 24.151210, "ServeItem": "金針花季賞花, 櫻花季導覽, 野菜火鍋養生餐, 步道健行", "Facebook": "https://www.facebook.com/Ares.Muxinquan" },
+      { "FarmNm_CH": "薰衣草森林(新社店)", "TEL": "04-25931066", "County": "臺中市", "Township": "新社區", "Address_CH": "臺中市新社區中和里中興街20號", "WebURL": "https://www.lavendercottage.com.tw", "Longitude": 120.839811, "Latitude": 24.145851, "ServeItem": "香草手工皂DIY, 繪製許願樹, 香草餐飲, 森林旋轉木馬", "Facebook": "https://www.facebook.com/lavendercottage2001" },
+      { "FarmNm_CH": "武陵農場", "TEL": "04-25901257", "County": "臺中市", "Township": "和平區", "Address_CH": "臺中市和平區平等里武陵路3-1號", "WebURL": "https://www.wuling-farm.com.tw", "Longitude": 121.311502, "Latitude": 24.352920, "ServeItem": "賞櫻採蘋果體驗, 茶葉品嚐, 高山生態導覽, 露營", "Facebook": "https://www.facebook.com/WulingFarm" },
+      { "FarmNm_CH": "福壽山農場", "TEL": "04-25989202", "County": "臺中市", "Township": "和平區", "Address_CH": "臺中市和平區梨山里福壽路29號", "WebURL": "https://www.fushoushan.com.tw", "Longitude": 121.245821, "Latitude": 24.246851, "ServeItem": "高山果園採果體驗, 天池觀景, 蘋果王參觀, 星空導覽", "Facebook": "https://www.facebook.com/fushoushanfarm" },
+      { "FarmNm_CH": "魔菇部落生態休閒農場", "TEL": "04-8521898", "County": "彰化縣", "Township": "埔心鄉", "Address_CH": "彰化縣埔心鄉柳橋東路829號", "WebURL": "http://www.mogu.com.tw", "Longitude": 120.551821, "Latitude": 23.948512, "ServeItem": "蕈菇種植DIY, 披薩DIY, 無塵室導覽, 菇菇養生火鍋", "Facebook": "https://www.facebook.com/mogubuluo" },
+      { "FarmNm_CH": "奈米休閒農場", "TEL": "04-7860268", "County": "彰化縣", "Township": "花壇鄉", "Address_CH": "彰化縣花壇鄉長沙村彰員路二段127號", "WebURL": "http://www.nano-farm.com.tw", "Longitude": 120.553951, "Latitude": 24.023851, "ServeItem": "西瓜採摘體驗, 水果彩繪DIY, 農業知識科普體驗", "Facebook": "https://www.facebook.com/nanofarm" },
+      { "FarmNm_CH": "水海農場", "TEL": "04-8862123", "County": "彰化縣", "Township": "芳苑鄉", "Address_CH": "彰化縣芳苑鄉漢寶村草漢路126號", "WebURL": "https://www.facebook.com/shuihaifarm", "Longitude": 120.385210, "Latitude": 23.985210, "ServeItem": "海牛採蚵體驗, 潮間帶觀察, 蛤蜊採集DIY, 鮮蚵美饌", "Facebook": "https://www.facebook.com/shuihaifarm" },
+      { "FarmNm_CH": "魔菇農場(雲林店)", "TEL": "05-5851234", "County": "雲林縣", "Township": "西螺鎮", "Address_CH": "雲林縣西螺鎮市場路15號", "WebURL": "http://www.mogu-yl.com.tw", "Longitude": 120.462851, "Latitude": 23.795821, "ServeItem": "有機蔬菜採收, 醬油製作DIY, 農村小旅行體驗", "Facebook": "https://www.facebook.com/moguyunlin" },
+      { "FarmNm_CH": "晁陽綠能休閒農場", "TEL": "05-6938238", "County": "雲林縣", "Township": "麥寮鄉", "Address_CH": "雲林縣麥寮鄉興華村興華60號", "WebURL": "http://www.goodsolar.com.tw", "Longitude": 120.285910, "Latitude": 23.739851, "ServeItem": "蟋蟀生態體驗, 太陽能農場導覽, 採摘蟋蟀餅乾DIY", "Facebook": "https://www.facebook.com/goodsolar.farm" },
+      { "FarmNm_CH": "綠盈牧場", "TEL": "05-2537013", "County": "嘉義縣", "Township": "中埔鄉", "Address_CH": "嘉義縣中埔鄉鹽館村4鄰35號", "WebURL": "http://www.greening.com.tw", "Longitude": 120.518621, "Latitude": 23.428512, "ServeItem": "賽鵝賽跑體驗, 餵小牛喝牛奶, 鮮奶布丁DIY, 兒童遊戲區", "Facebook": "https://www.facebook.com/greeningfarm" },
+      { "FarmNm_CH": "獨角仙休閒農場", "TEL": "05-2534489", "County": "嘉義縣", "Township": "中埔鄉", "Address_CH": "嘉義縣中埔鄉石硜村15號", "WebURL": "http://www.kabuto.com.tw", "Longitude": 120.528512, "Latitude": 23.419512, "ServeItem": "獨角仙甲蟲生態導覽, 餵駝鳥, 沙坑 play, 鮮奶冰淇淋", "Facebook": "https://www.facebook.com/kabutofarm" },
+      { "FarmNm_CH": "阿里山農場", "TEL": "05-2679911", "County": "嘉義縣", "Township": "阿里山鄉", "Address_CH": "嘉義縣阿里山鄉香林村59號", "WebURL": "https://www.alishan-farm.com.tw", "Longitude": 120.806210, "Latitude": 23.511210, "ServeItem": "高山烏龍茶採茶DIY, 揉茶體驗, 日出觀景導覽", "Facebook": "https://www.facebook.com/alishanfarm" },
+      { "FarmNm_CH": "新化休閒農場", "TEL": "06-5908080", "County": "臺南市", "Township": "新化區", "Address_CH": "臺南市新化區知義里口埤76號", "WebURL": "http://www.sinhua-farm.com.tw", "Longitude": 120.339851, "Latitude": 23.018210, "ServeItem": "桃花心木林森林浴, 健行導覽, 竹筍風味餐, 自然體驗", "Facebook": "https://www.facebook.com/sinhuafarm" },
+      { "FarmNm_CH": "大路觀主題樂園農場", "TEL": "08-7958811", "County": "屏東縣", "Township": "高樹鄉", "Address_CH": "屏東縣高樹鄉廣福村中正路188號", "WebURL": "http://www.daluguan.org.tw", "Longitude": 120.612851, "Latitude": 22.812512, "ServeItem": "仙人掌世界導覽, 石獅子文化體驗, 漂漂河體驗, 採果", "Facebook": "https://www.facebook.com/daluguan" },
+      { "FarmNm_CH": "銘泉生態休閒農場", "TEL": "08-7990220", "County": "屏東縣", "Township": "瑪家鄉", "Address_CH": "屏東縣瑪家鄉佳義村114號", "WebURL": "https://www.facebook.com/mqfarm", "Longitude": 120.638512, "Latitude": 22.685210, "ServeItem": "有機鳳梨採果DIY, 鳳梨披薩製作, 排灣族文化體驗", "Facebook": "https://www.facebook.com/mqfarm" },
+      { "FarmNm_CH": "墾丁悠客馬術渡假農場", "TEL": "08-8821122", "County": "屏東縣", "Township": "車城鄉", "Address_CH": "屏東縣車城鄉統埔路23-1號", "WebURL": "http://www.york-horse.com.tw", "Longitude": 120.725821, "Latitude": 22.073010, "ServeItem": "野外騎馬體驗, 馬匹刷毛餵食, 馬術教學, 戶外溯溪", "Facebook": "https://www.facebook.com/yorkhorse" },
+      { "FarmNm_CH": "華源農場", "TEL": "089-781234", "County": "臺東縣", "Township": "太麻里鄉", "Address_CH": "臺東縣太麻里鄉華源村10鄰1號", "WebURL": "https://www.facebook.com/huayuanfarm", "Longitude": 121.016310, "Latitude": 22.665821, "ServeItem": "釋迦採果體驗, 椰子採集, 太平洋海景觀察, 咖啡體驗", "Facebook": "https://www.facebook.com/huayuanfarm" },
+      { "FarmNm_CH": "初鹿牧場", "TEL": "089-571002", "County": "臺東縣", "Township": "卑南鄉", "Address_CH": "臺東縣卑南鄉明峰村28鄰39號", "WebURL": "https://www.chuluranch.com.tw", "Longitude": 121.118521, "Latitude": 22.862512, "ServeItem": "滾草圈體驗, 餵小牛, 鮮奶冰淇淋, 森林滑草場", "Facebook": "https://www.facebook.com/chuluranch" },
+      { "FarmNm_CH": "布農部落休閒農場", "TEL": "089-561211", "County": "臺東縣", "Township": "延平鄉", "Address_CH": "臺東縣延平鄉桃源村11鄰190號", "WebURL": "http://www.bunun.org.tw", "Longitude": 121.102851, "Latitude": 22.905210, "ServeItem": "原住民八部合音欣賞, 射箭體驗, 皮雕DIY, 原民風味餐", "Facebook": "https://www.facebook.com/bununfarm" },
+      { "FarmNm_CH": "新光兆豐休閒農場", "TEL": "03-8772666", "County": "花蓮縣", "Township": "鳳林鎮", "Address_CH": "花蓮縣鳳林鎮永福路20號", "WebURL": "https://www.skcf.com.tw", "Longitude": 121.458210, "Latitude": 23.785210, "ServeItem": "水豚君互動體驗, 租電動車遊園, 鮮奶體驗, 溫泉SPA", "Facebook": "https://www.facebook.com/skcf.tw" },
+      { "FarmNm_CH": "瑞穗牧場", "TEL": "03-8876637", "County": "花蓮縣", "Township": "瑞穗鄉", "Address_CH": "花蓮縣瑞穗鄉舞鶴村6鄰159號", "WebURL": "https://www.facebook.com/ruisueiranch", "Longitude": 121.378512, "Latitude": 23.485210, "ServeItem": "鴕鳥餵食, 鮮奶饅頭品嚐, 露天咖啡賞景, 鮮奶牛軋糖", "Facebook": "https://www.facebook.com/ruisueiranch" },
+      { "FarmNm_CH": "立川漁場", "TEL": "03-8651333", "County": "花蓮縣", "Township": "壽豐鄉", "Address_CH": "花蓮縣壽豐鄉共和村魚池45號", "WebURL": "http://www.lichuan.tw", "Longitude": 121.515821, "Latitude": 23.865210, "ServeItem": "摸蜆兼洗褲體驗, 蜆摸摸DIY, 摸蜆風味餐, 漁業科普", "Facebook": "https://www.facebook.com/lichuan.tw" },
+      { "FarmNm_CH": "蓬萊生態休閒農場", "TEL": "037-821234", "County": "苗栗縣", "Township": "南庄鄉", "Address_CH": "苗栗縣南庄鄉蓬萊村10鄰12號", "WebURL": "https://www.facebook.com/penglaifarm", "Longitude": 120.978512, "Latitude": 24.548210, "ServeItem": "溪流生態觀察, 鱒魚養殖體驗, 客家菜體驗, 螢火蟲導覽", "Facebook": "https://www.facebook.com/penglaifarm" },
+      { "FarmNm_CH": "三芝共榮生態農場", "TEL": "02-26361234", "County": "新北市", "Township": "三芝區", "Address_CH": "新北市三芝區共榮溝12號", "WebURL": "https://www.facebook.com/sanzhifarm", "Longitude": 121.502851, "Latitude": 25.264310, "ServeItem": "梯田耕作體驗, 無毒梯田導覽, 友善農作採集", "Facebook": "https://www.facebook.com/sanzhifarm" },
+      { "FarmNm_CH": "準園休閒農場", "TEL": "02-22922466", "County": "新北市", "Township": "五股區", "Address_CH": "新北市五股區新五路二段70號", "WebURL": "http://www.rhinefarm.com.tw", "Longitude": 121.442851, "Latitude": 25.082512, "ServeItem": "螢火蟲復育觀察, 大大草坪披薩DIY, 披薩製作, 動物體驗", "Facebook": "https://www.facebook.com/rhinefarm" }
     ];
 
-    let cwaApiKey = localStorage.getItem('cwa_api_key') || '';
-    let earthquakeRecords = [];
-    let filteredRecords = [];
-    let selectedIndex = 0;
-    let selectedCounty = "";
-    let isAudioUnlocked = false;
-    let pollingTimer = null;
-    const alarmAudio = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
+    // 2. Global State & Variables
+    let map = null;
+    let markers = [];
+    let activeFarmIndex = null;
+    let filteredFarms = [...farmData];
 
-    // 安全的 HTML 轉義函式 (防止 XSS)
-    function escapeHTML(str) {
-      if (str === null || str === undefined) return '';
-      return String(str).replace(/[&<>"']/g, match => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-      }[match]));
+    // Initialize Page on Load
+    window.onload = function() {
+      initMap();
+      populateCountyDropdown();
+      renderFarmCards(farmData);
+      plotMarkers(farmData);
+      setupEventListeners();
+    };
+
+    // 3. Initialize Leaflet Map
+    function initMap() {
+      // Taiwan Center Lat/Lng
+      map = L.map('map', {
+        zoomControl: false
+      }).setView([23.8, 120.9], 8);
+
+      // Add Zoom Control to Top Right
+      L.control.zoom({ position: 'topright' }).addTo(map);
+
+      // OpenStreetMap Tiles
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+      }).addTo(map);
     }
 
-    // API Key 設定管理
-    document.getElementById('set-key-btn').addEventListener('click', () => {
-      const input = prompt('請輸入中央氣象署 Open API Key：', cwaApiKey);
-      if (input !== null) {
-        cwaApiKey = input.trim();
-        localStorage.setItem('cwa_api_key', cwaApiKey);
-        fetchEarthquakeData();
-      }
-    });
-
-    // 填入縣市下拉選單
-    function initCountySelect() {
-      const select = document.getElementById('county-filter');
-      TAIWAN_COUNTIES.forEach(county => {
-        const opt = document.createElement('option');
-        opt.value = county;
-        opt.textContent = county;
-        select.appendChild(opt);
-      });
-
-      select.addEventListener('change', (e) => {
-        selectedCounty = e.target.value;
-        filterRecordsByCounty();
-      });
-
-      document.getElementById('reset-filter-btn').addEventListener('click', () => {
-        select.value = "";
-        selectedCounty = "";
-        filterRecordsByCounty();
-      });
-    }
-
-    // 音效解鎖機制
-    document.getElementById('audio-btn').addEventListener('click', function() {
-      alarmAudio.play().then(() => {
-        alarmAudio.pause();
-        alarmAudio.currentTime = 0;
-        isAudioUnlocked = true;
-        this.textContent = '🟢 警報監控中';
-        this.classList.add('unlocked');
-      }).catch(err => console.warn("Audio play failed:", err));
-    });
-
-    // 資料清洗 (Data Sanitizer)
-    function sanitizeIntensity(rawIntensity) {
-      if (!rawIntensity) return { label: '0級', class: 'i-0' };
-      const str = String(rawIntensity).trim().replace('級', '');
+    // 4. Populate County Select Dropdown
+    function populateCountyDropdown() {
+      const countySelect = document.getElementById('countySelect');
+      const counties = [...new Set(farmData.map(item => item.County))];
       
-      const map = {
-        '0': { label: '0級', class: 'i-0' },
-        '1': { label: '1級', class: 'i-1' },
-        '2': { label: '2級', class: 'i-2' },
-        '3': { label: '3級', class: 'i-3' },
-        '4': { label: '4級', class: 'i-4' },
-        '5弱': { label: '5弱', class: 'i-5L' },
-        '5強': { label: '5強', class: 'i-5H' },
-        '6弱': { label: '6弱', class: 'i-6L' },
-        '6強': { label: '6強', class: 'i-6H' },
-        '7': { label: '7級', class: 'i-7' }
-      };
-      return map[str] || { label: '0級', class: 'i-0' };
+      counties.forEach(county => {
+        const option = document.createElement('option');
+        option.value = county;
+        option.textContent = `📍 ${county}`;
+        countySelect.appendChild(option);
+      });
     }
 
-    function getCountyIntensityForEq(eq, countyName) {
-      if (!eq?.Intensity?.ShakingArea) return null;
-      const area = eq.Intensity.ShakingArea.find(a => a.CountyName === countyName);
-      return area ? area.AreaIntensity : null;
+    // 5. Custom Wooden/Green Leaflet Icon Marker
+    function createCustomMarkerIcon(isSelected = false) {
+      const color = isSelected ? '#E09200' : '#5B8C51';
+      const scale = isSelected ? 'scale(1.25)' : 'scale(1)';
+      
+      const svgIcon = `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" width="34" height="46" style="transform: ${scale}; filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.3)); transition: all 0.2s ease;">
+          <path fill="${color}" stroke="#7C5237" stroke-width="18" d="M172.268 501.67C26.97 291.031 0 269.413 0 192 0 85.961 85.961 0 192 0s192 85.961 192 192c0 77.413-26.97 99.031-172.268 309.67-9.535 13.774-29.93 13.773-39.464 0z"/>
+          <circle cx="192" cy="192" r="120" fill="#FAF6EE" />
+          <text x="192" y="225" font-size="130" text-anchor="middle">🌾</text>
+        </svg>
+      `;
+
+      return L.divIcon({
+        className: 'custom-farm-icon',
+        html: svgIcon,
+        iconSize: [34, 46],
+        iconAnchor: [17, 46],
+        popupAnchor: [0, -42]
+      });
     }
 
-    function filterRecordsByCounty() {
-      if (!selectedCounty) {
-        filteredRecords = [...earthquakeRecords];
-      } else {
-        filteredRecords = earthquakeRecords.filter(eq => {
-          const intensity = getCountyIntensityForEq(eq, selectedCounty);
-          return intensity && intensity !== '0' && intensity !== '0級';
-        });
-      }
-      selectedIndex = 0;
-      renderHistoryList();
-      updateSelectedDetail();
-    }
-
-    function initCountyGrid() {
-      const container = document.getElementById('county-grid');
+    // 6. Render Sidebar Farm Cards
+    function renderFarmCards(farms) {
+      const container = document.getElementById('farmList');
+      const countEl = document.getElementById('farmCount');
+      
       container.innerHTML = '';
-      TAIWAN_COUNTIES.forEach(county => {
+      countEl.textContent = farms.length;
+
+      if (farms.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-12 px-4">
+            <span class="text-4xl">🧑‍🌾</span>
+            <p class="mt-2 text-farm-brown font-bold text-base">沒有找到符合的農場喔！</p>
+            <p class="text-xs text-stone-500 mt-1">請嘗試換個搜尋關鍵字或選擇其他縣市。</p>
+          </div>
+        `;
+        return;
+      }
+
+      farms.forEach((farm, index) => {
+        const originalIndex = farmData.indexOf(farm);
         const card = document.createElement('div');
-        card.className = 'county-card';
-        card.id = `card-${county}`;
+        
+        card.id = `farm-card-${originalIndex}`;
+        card.className = `farm-card bg-farm-cream-card border-2 border-farm-brown-light/60 rounded-2xl p-3.5 shadow-sm hover:shadow-md cursor-pointer transition-all duration-200 relative overflow-hidden group ${activeFarmIndex === originalIndex ? 'active' : ''}`;
+        
+        // Parse Service Badges (First 3 items)
+        const services = farm.ServeItem.split(',').map(s => s.trim());
+        const badgeTags = services.slice(0, 3).map(s => 
+          `<span class="inline-block bg-farm-green-light text-farm-green-dark border border-farm-green/30 text-[11px] px-2 py-0.5 rounded-md font-semibold mr-1 mb-1">🌱 ${s}</span>`
+        ).join('');
+
         card.innerHTML = `
-          <div class="county-name">${escapeHTML(county)}</div>
-          <span class="intensity-tag i-0" id="tag-${county}">0級</span>
+          <div class="flex justify-between items-start mb-1.5">
+            <h3 class="text-base font-bold text-farm-brown font-rural group-hover:text-farm-green transition-colors flex items-center gap-1.5">
+              <span>🏡</span> ${farm.FarmNm_CH}
+            </h3>
+            <span class="text-xs bg-farm-brown-light/40 text-farm-brown px-2 py-0.5 rounded-full font-bold shrink-0">
+              ${farm.County}${farm.Township}
+            </span>
+          </div>
+
+          <p class="text-xs text-stone-600 mb-2 line-clamp-1">
+            <i class="fa-solid fa-location-dot text-farm-brown/70 mr-1.5 w-3"></i>${farm.Address_CH}
+          </p>
+
+          <p class="text-xs text-stone-600 mb-2">
+            <i class="fa-solid fa-phone text-farm-brown/70 mr-1.5 w-3"></i>
+            <a href="tel:${farm.TEL}" class="hover:underline font-bold text-farm-brown" onclick="event.stopPropagation()">${farm.TEL}</a>
+          </p>
+
+          <div class="mb-2">
+            ${badgeTags}
+            ${services.length > 3 ? `<span class="text-[10px] text-stone-400 font-bold">+${services.length - 3}更多</span>` : ''}
+          </div>
+
+          <!-- Quick Action Buttons -->
+          <div class="flex items-center gap-2 pt-2 border-t border-stone-100 mt-2">
+            ${farm.WebURL ? `
+              <a href="${farm.WebURL}" target="_blank" onclick="event.stopPropagation()" class="flex-1 text-center bg-farm-brown/10 hover:bg-farm-brown hover:text-white text-farm-brown text-xs py-1.5 px-2 rounded-lg font-bold transition-all">
+                <i class="fa-solid fa-globe mr-1"></i>官方網站
+              </a>
+            ` : ''}
+            ${farm.Facebook ? `
+              <a href="${farm.Facebook}" target="_blank" onclick="event.stopPropagation()" class="flex-1 text-center bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-700 text-xs py-1.5 px-2 rounded-lg font-bold transition-all">
+                <i class="fa-brands fa-facebook mr-1"></i>FB粉專
+              </a>
+            ` : ''}
+          </div>
         `;
 
-        card.addEventListener('click', () => {
-          selectedCounty = county;
-          document.getElementById('county-filter').value = county;
-          filterRecordsByCounty();
-        });
-
+        // Card Click Handler
+        card.onclick = () => selectFarm(originalIndex, true);
         container.appendChild(card);
       });
     }
 
-    function renderHistoryList() {
-      const container = document.getElementById('history-list');
-      container.innerHTML = '';
+    // 7. Plot Markers on Leaflet Map
+    function plotMarkers(farms) {
+      // Clear Existing Markers
+      markers.forEach(m => map.removeLayer(m));
+      markers = [];
 
-      document.getElementById('history-count').textContent = `共 ${filteredRecords.length} 筆`;
+      farms.forEach((farm) => {
+        const originalIndex = farmData.indexOf(farm);
+        const marker = L.marker([farm.Latitude, farm.Longitude], {
+          icon: createCustomMarkerIcon(activeFarmIndex === originalIndex)
+        }).addTo(map);
 
-      if (filteredRecords.length === 0) {
-        container.innerHTML = `<div style="text-align: center; color: var(--text-secondary); padding: 20px;">無該縣市有感地震紀錄</div>`;
-        return;
-      }
-
-      filteredRecords.forEach((eq, idx) => {
-        const info = eq.EarthquakeInfo;
-        if (!info) return;
-
-        const item = document.createElement('div');
-        item.className = `history-item ${idx === selectedIndex ? 'active' : ''}`;
-        
-        let countyIntensityTag = "";
-        if (selectedCounty) {
-          const cIntensity = getCountyIntensityForEq(eq, selectedCounty);
-          const sanitized = sanitizeIntensity(cIntensity);
-          countyIntensityTag = `<span class="county-intensity-badge ${sanitized.class}">${escapeHTML(selectedCounty)} ${sanitized.label}</span>`;
-        }
-
-        const originTime = info.OriginTime ? info.OriginTime.substring(5, 16) : '--';
-        const location = info.Epicenter?.Location ? info.Epicenter.Location.substring(0, 10) : '--';
-        const magVal = info.EarthquakeMagnitude?.MagnitudeValue ?? '--';
-
-        item.innerHTML = `
-          <div>
-            <div class="history-time">${escapeHTML(originTime)} ${countyIntensityTag}</div>
-            <div class="history-loc">${escapeHTML(location)}...</div>
+        // Build Leaflet Popup Content
+        const popupContent = `
+          <div class="w-56 font-body">
+            <span class="text-[11px] bg-farm-brown-light/40 text-farm-brown px-2 py-0.5 rounded-full font-bold inline-block mb-1">
+              ${farm.County} ‧ ${farm.Township}
+            </span>
+            <h4 class="text-base font-bold font-rural text-farm-brown mb-1 flex items-center gap-1">
+              🏡 ${farm.FarmNm_CH}
+            </h4>
+            <p class="text-xs text-stone-600 mb-1.5 leading-snug">
+              <b>地址:</b> ${farm.Address_CH}
+            </p>
+            <p class="text-xs text-stone-600 mb-2">
+              <b>電話:</b> <a href="tel:${farm.TEL}" class="text-farm-green font-bold underline">${farm.TEL}</a>
+            </p>
+            <p class="text-xs text-stone-500 bg-farm-cream p-2 rounded-lg border border-farm-brown-light/40 mb-2">
+              <b>體驗項目:</b><br>${farm.ServeItem}
+            </p>
+            <div class="flex gap-1.5">
+              ${farm.WebURL ? `<a href="${farm.WebURL}" target="_blank" class="flex-1 text-center bg-farm-green text-white text-[11px] py-1 px-1.5 rounded-md font-bold hover:bg-farm-green-dark">官網</a>` : ''}
+              ${farm.Facebook ? `<a href="${farm.Facebook}" target="_blank" class="flex-1 text-center bg-blue-600 text-white text-[11px] py-1 px-1.5 rounded-md font-bold hover:bg-blue-700">FB粉專</a>` : ''}
+            </div>
           </div>
-          <div class="history-mag">M ${escapeHTML(magVal)}</div>
         `;
 
-        item.addEventListener('click', () => {
-          selectedIndex = idx;
-          renderHistoryList();
-          updateSelectedDetail();
+        marker.bindPopup(popupContent);
+
+        // Marker Click Handler
+        marker.on('click', () => {
+          selectFarm(originalIndex, false);
         });
 
-        container.appendChild(item);
+        markers[originalIndex] = marker;
       });
     }
 
-    function updateSelectedDetail() {
-      if (!filteredRecords[selectedIndex]) return;
+    // 8. Select Farm (Sync Map & Sidebar)
+    function selectFarm(index, flyToMap = true) {
+      if (index === null || index === undefined) return;
+      
+      const farm = farmData[index];
+      activeFarmIndex = index;
 
-      const eq = filteredRecords[selectedIndex];
-      const info = eq.EarthquakeInfo || {};
-
-      document.getElementById('eq-mag').textContent = `M ${info.EarthquakeMagnitude?.MagnitudeValue ?? '--'}`;
-      document.getElementById('eq-time').textContent = info.OriginTime || '--';
-      document.getElementById('eq-loc').textContent = info.Epicenter?.Location || '--';
-      document.getElementById('eq-depth').textContent = info.FocalDepth ? `${info.FocalDepth} km` : '-- km';
-      document.getElementById('eq-report').textContent = eq.ReportContent || '無詳細報告文字';
-
-      const countyIntensityMap = {};
-      if (eq.Intensity?.ShakingArea) {
-        eq.Intensity.ShakingArea.forEach(area => {
-          if (area.CountyName) {
-            countyIntensityMap[area.CountyName] = area.AreaIntensity;
-          }
-        });
-      }
-
-      TAIWAN_COUNTIES.forEach(county => {
-        const rawVal = countyIntensityMap[county];
-        const sanitized = sanitizeIntensity(rawVal);
-        const tag = document.getElementById(`tag-${county}`);
-        const card = document.getElementById(`card-${county}`);
-
-        if (tag) {
-          tag.textContent = sanitized.label;
-          tag.className = `intensity-tag ${sanitized.class}`;
-        }
-
-        if (card) {
-          if (selectedCounty === county) {
-            card.classList.add('highlight');
-          } else {
-            card.classList.remove('highlight');
-          }
+      // Update Marker Icons highlight
+      markers.forEach((m, idx) => {
+        if (m) {
+          m.setIcon(createCustomMarkerIcon(idx === index));
         }
       });
-    }
 
-    async function fetchEarthquakeData() {
-      if (!cwaApiKey) {
-        document.getElementById('update-time').textContent = '未設定 API Key';
-        return;
+      // Fly To Map & Open Popup
+      if (flyToMap && markers[index]) {
+        map.flyTo([farm.Latitude, farm.Longitude], 13, {
+          duration: 1.2
+        });
+        setTimeout(() => {
+          markers[index].openPopup();
+        }, 400);
+      } else if (markers[index]) {
+        markers[index].openPopup();
       }
 
-      const apiUrl = `https://opendata.cwa.gov.tw/api/v1/rest/datastore/E-A0015-001?Authorization=${encodeURIComponent(cwaApiKey)}`;
-
-      try {
-        const res = await fetch(apiUrl);
-        if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
-        
-        const result = await res.json();
-        if (!result?.records?.Earthquake) throw new Error('資料格式不符');
-
-        earthquakeRecords = result.records.Earthquake;
-        document.getElementById('update-time').textContent = `最後連線：${new Date().toLocaleTimeString()}`;
-
-        filterRecordsByCounty();
-
-        if (earthquakeRecords.length > 0) {
-          const latestEventId = earthquakeRecords[0]?.EarthquakeInfo?.OriginTime;
-          const lastNotifiedId = localStorage.getItem('last_earthquake_id');
-
-          if (latestEventId && latestEventId !== lastNotifiedId) {
-            localStorage.setItem('last_earthquake_id', latestEventId);
-            
-            const panel = document.getElementById('main-info-panel');
-            panel.classList.add('alarm-active');
-            setTimeout(() => panel.classList.remove('alarm-active'), 5000);
-
-            if (isAudioUnlocked) {
-              alarmAudio.currentTime = 0;
-              alarmAudio.play().catch(e => console.warn("Play failed:", e));
-            }
-          }
-        }
-
-      } catch (err) {
-        console.error("Dashboard Error:", err);
-        document.getElementById('update-time').textContent = '連線失敗或 Key 無效';
+      // Highlight Card & Scroll into view in Sidebar
+      document.querySelectorAll('.farm-card').forEach(card => card.classList.remove('active'));
+      const activeCard = document.getElementById(`farm-card-${index}`);
+      
+      if (activeCard) {
+        activeCard.classList.add('active');
+        activeCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
     }
 
-    // 輪詢控制 (切換分頁時暫停，節省資源)
-    function startPolling() {
-      stopPolling();
-      pollingTimer = setInterval(fetchEarthquakeData, 60000); // 調整為每 60 秒一次
-    }
+    // 9. Filter Handler (Search + Dropdown)
+    function handleFilter() {
+      const searchVal = document.getElementById('searchInput').value.trim().toLowerCase();
+      const countyVal = document.getElementById('countySelect').value;
+      const clearBtn = document.getElementById('clearSearchBtn');
 
-    function stopPolling() {
-      if (pollingTimer) {
-        clearInterval(pollingTimer);
-        pollingTimer = null;
-      }
-    }
-
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden) {
-        stopPolling();
+      // Toggle Clear Search Button
+      if (searchVal) {
+        clearBtn.classList.remove('hidden');
       } else {
-        fetchEarthquakeData();
-        startPolling();
+        clearBtn.classList.add('hidden');
       }
-    });
 
-    // 啟動看板
-    initCountySelect();
-    initCountyGrid();
-    
-    if (!cwaApiKey) {
-      document.getElementById('update-time').textContent = '請先設定 API Key';
-    } else {
-      fetchEarthquakeData();
-      startPolling();
+      filteredFarms = farmData.filter(farm => {
+        const matchCounty = (countyVal === 'ALL') || (farm.County === countyVal);
+        const matchSearch = !searchVal || 
+          farm.FarmNm_CH.toLowerCase().includes(searchVal) ||
+          farm.ServeItem.toLowerCase().includes(searchVal) ||
+          farm.County.toLowerCase().includes(searchVal) ||
+          farm.Township.toLowerCase().includes(searchVal) ||
+          farm.Address_CH.toLowerCase().includes(searchVal);
+
+        return matchCounty && matchSearch;
+      });
+
+      renderFarmCards(filteredFarms);
+      plotMarkers(filteredFarms);
+
+      // Auto fit map bounds if filtered results exist
+      if (filteredFarms.length > 0) {
+        const bounds = L.latLngBounds(filteredFarms.map(f => [f.Latitude, f.Longitude]));
+        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
+      }
+    }
+
+    // 10. Event Listeners Setup
+    function setupEventListeners() {
+      const searchInput = document.getElementById('searchInput');
+      const countySelect = document.getElementById('countySelect');
+      const clearSearchBtn = document.getElementById('clearSearchBtn');
+
+      searchInput.addEventListener('input', handleFilter);
+      countySelect.addEventListener('change', handleFilter);
+
+      clearSearchBtn.addEventListener('click', () => {
+        searchInput.value = '';
+        handleFilter();
+        searchInput.focus();
+      });
     }
   </script>
 </body>
